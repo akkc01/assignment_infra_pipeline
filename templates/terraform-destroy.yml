@@ -1,0 +1,26 @@
+jobs:
+- job: destroyJob
+  dependsOn: approvalJob
+  condition: and(succeeded('approvalJob'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  displayName: "Terraform Destroy"
+  steps:
+    - task: TerraformTask@5
+      displayName: "Terraform Init"
+      inputs:
+        provider: azurerm
+        command: init
+        workingDirectory: $(tf_working_dir)
+        backendServiceArm: $(sc_name)
+        backendAzureRmResourceGroupName: $(tf_rg)
+        backendAzureRmStorageAccountName: $(tf_storage)
+        backendAzureRmContainerName: $(tf_container)
+        backendAzureRmKey: $(tfstateKey)
+
+    - task: TerraformTask@5
+      displayName: Destroy
+      inputs:
+        provider: azurerm
+        command: destroy
+        workingDirectory: $(tf_working_dir)
+        commandOptions: '-auto-approve'
+        environmentServiceNameAzureRM: $(sc_name)

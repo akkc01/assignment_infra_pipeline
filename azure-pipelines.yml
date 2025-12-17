@@ -1,0 +1,92 @@
+parameters:
+  - name: environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+
+trigger:
+  branches:
+    include:
+      - main
+      - features/*
+    exclude:
+      - prod
+
+
+pool:
+  name: akkc_agent
+
+variables:
+  tfstateKey: '${{ parameters.environment }}.terraform.tfstate'
+  tf_working_dir: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+  tf_rg: 'my-rg-test1'
+  tf_storage: 'demostorage9451'
+  tf_container: 'tfstate'
+  sc_name: 'akkc_agent_sp'
+
+
+# # ---------------------------
+# # 1. Initialization and Formatting
+# # ---------------------------
+stages:
+  - stage: terraformInitandfmt
+    displayName: "Initialization and Formatting"
+    jobs:
+    #  Init and Fmt job
+      - template: templates/terraform-init.yml
+
+
+# # ---------------------------
+# # 2. Scanning
+# # ---------------------------
+  - stage: terraformScanning
+    dependsOn: terraformInitandfmt
+    displayName: "Security Scanning"
+    condition: and(succeeded('terraformInitandfmt'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+
+    #  Security Scanning job
+    - template: templates/security-scan.yml
+
+
+# # ---------------------------
+# # 3. Validate + Plan
+# # ---------------------------
+  - stage: terraformValidatePlan
+    dependsOn: terraformScanning
+    displayName: "Validate and Plan Infrastructure"
+    condition: and(succeeded('terraformScanning'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+    #  Validate and Plan job
+    - template: templates/terraform-validate-plan.yml
+
+
+# # ---------------------------
+# # 4. Apply
+# # ---------------------------
+  - stage: terraformApply
+    dependsOn: terraformValidatePlan
+    displayName: "Creating Infrastructure"
+    # condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+    condition: and(succeeded('terraformValidatePlan'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+    #  Approval job
+    - template: templates/terraform-approval.yml
+    #  Apply job
+    - template: templates/terraform-apply.yml
+
+
+# # ---------------------------
+# # 5. Destroy
+# # ---------------------------
+  - stage: terraformDestroy
+    dependsOn: terraformApply
+    displayName: "Destroying Infrastructure"
+    condition: and(succeeded('terraformApply'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+
+    # Approval job
+    - template: templates/terraform-approval.yml
+    # Destroy job
+    - template: templates/terraform-destroy.yml
+

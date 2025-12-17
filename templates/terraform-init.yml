@@ -1,0 +1,29 @@
+jobs:
+- job: terraformInstall
+  displayName: "Terraform Install and Init"
+  steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformTask@5
+      displayName: "Terraform Init"
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: $(tf_working_dir)
+        backendServiceArm: $(sc_name)
+        backendAzureRmResourceGroupName: $(tf_rg)
+        backendAzureRmStorageAccountName: $(tf_storage)
+        backendAzureRmContainerName: $(tf_container)
+        backendAzureRmKey: $(tfstateKey)
+
+
+    - task: TerraformTask@5
+      displayName: "Terraform fmt"
+      inputs:
+        provider: 'azurerm'
+        command: 'custom'
+        workingDirectory: $(tf_working_dir)
+        customCommand: 'fmt'
+        environmentServiceNameAzureRM: $(sc_name)

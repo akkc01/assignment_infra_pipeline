@@ -1,0 +1,12 @@
+jobs:
+- job: approvalJob
+  displayName: "Manual Approval Before Apply/Destroy"
+  pool: server
+  steps:
+    - task: ManualValidation@1
+      inputs:
+        notifyUsers: 'amitkkc01@gmail.com'
+        approvers: 'amitkkc01@gmail.com'
+        instructions: 'Please approve Terraform APPLY for MAIN branch.'
+        timeout: 60
+

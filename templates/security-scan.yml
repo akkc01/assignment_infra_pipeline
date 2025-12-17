@@ -1,0 +1,29 @@
+jobs:
+- job: terraformScanning
+  displayName: "Infrastructure as Code Security Scanning"
+  steps:
+
+    - script: |
+        echo "Installing IaC Security Tools..."
+        arch -arm64 brew install tfsec
+        arch -arm64 brew install checkov
+        arch -arm64 brew install tflint
+        arch -arm64 brew install terrascan
+        arch -arm64 brew install aquasecurity/trivy/trivy
+        arch -arm64 brew install kics
+      displayName: "Install Scanners"
+
+    - task: tfsec@1
+      displayName: "TFSEC Scan"
+      inputs:
+        version: 'v1.26.0'
+        dir: $(tf_working_dir)
+
+    - script: |
+        cd '$(tf_working_dir)'
+        tflint --init
+        tflint
+      displayName: "TFLint Scan"
+
+    - script: trivy config '$(tf_working_dir)'
+      displayName: "Trivy Scan"

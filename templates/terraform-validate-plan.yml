@@ -1,0 +1,31 @@
+jobs:
+- job: validatePlan
+  displayName: "Terraform Validate and Plan"
+  steps:
+    - task: TerraformTask@5
+      displayName: "Terraform Init"
+      inputs:
+        provider: azurerm
+        command: init
+        workingDirectory: $(tf_working_dir)
+        backendServiceArm: $(sc_name)
+        backendAzureRmResourceGroupName: $(tf_rg)
+        backendAzureRmStorageAccountName: $(tf_storage)
+        backendAzureRmContainerName: $(tf_container)
+        backendAzureRmKey: $(tfstateKey)
+
+
+    - task: TerraformTask@5
+      displayName: "Terraform Validate"
+      inputs:
+        provider: azurerm
+        command: validate
+        workingDirectory: $(tf_working_dir)
+
+    - task: TerraformTask@5
+      displayName: "Terraform Plan"
+      inputs:
+        provider: azurerm
+        command: plan
+        workingDirectory: $(tf_working_dir)
+        environmentServiceNameAzureRM: $(sc_name)
