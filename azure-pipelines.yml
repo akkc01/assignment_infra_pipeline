@@ -9,8 +9,6 @@ trigger:
     include:
       - main
       - features/*
-    exclude:
-      - prod
 
 
 pool:

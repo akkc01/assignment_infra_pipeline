@@ -10,7 +10,6 @@ jobs:
         arch -arm64 brew install tflint
         arch -arm64 brew install terrascan
         arch -arm64 brew install aquasecurity/trivy/trivy
-        arch -arm64 brew install kics
       displayName: "Install Scanners"
 
     - task: tfsec@1
@@ -24,6 +23,16 @@ jobs:
         tflint --init
         tflint
       displayName: "TFLint Scan"
+
+    - script: |
+          echo "Running Checkov Scan..."
+          checkov -d $(tf_working_dir)
+        displayName: "Checkov Scan"   
+
+    - script: |
+        echo "Running Terrascan..."
+        terrascan scan -i terraform -d $(tf_working_dir)
+      displayName: "Terrascan Scan"
 
     - script: trivy config '$(tf_working_dir)'
       displayName: "Trivy Scan"
