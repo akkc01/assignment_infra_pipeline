@@ -1,90 +1,101 @@
-parameters:
-  - name: environment
-    type: string
-    default: dev
-    values: [dev, staging, prod]
-
+---
 trigger:
   branches:
     include:
-      - main
-      - features/*
-
+      # - main
+      # - features/*
 
 pool:
   name: akkc_agent
 
 variables:
-  tfstateKey: '${{ parameters.environment }}.terraform.tfstate'
-  tf_working_dir: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
-  tf_rg: 'my-rg-test1'
-  tf_storage: 'demostorage9451'
-  tf_container: 'tfstate'
-  sc_name: 'akkc_agent_sp'
+  - group: backend_cred   # variable group name for backend details
 
 
-# # ---------------------------
-# # 1. Initialization and Formatting
-# # ---------------------------
 stages:
+# # 1. Initialization and Formatting
   - stage: terraformInitandfmt
-    displayName: "Initialization and Formatting"
+    displayName: "Terraform Install and Init"
     jobs:
     #  Init and Fmt job
       - template: templates/terraform-init.yml
+        parameters:
+          workingDirectory: '$(working_dir_dev)'
+          backendServiceArm: '$(svc_name)'            
+          backendRgName: '$(rg_name)'
+          backendStorageAccount: '$(stg_name)'
+          backendContainerName: '$(blobcontainer_name)'
+          backendKey: '$(tfstate_Key)'
 
-
-# # ---------------------------
 # # 2. Scanning
-# # ---------------------------
   - stage: terraformScanning
     dependsOn: terraformInitandfmt
-    displayName: "Security Scanning"
-    condition: and(succeeded('terraformInitandfmt'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    displayName: "Code Quality Check"
+    condition: succeeded('terraformInitandfmt')
     jobs:
-
     #  Security Scanning job
     - template: templates/security-scan.yml
+      parameters:
+        workingDirectory: '$(working_dir_dev)'
 
 
-# # ---------------------------
 # # 3. Validate + Plan
-# # ---------------------------
   - stage: terraformValidatePlan
     dependsOn: terraformScanning
-    displayName: "Validate and Plan Infrastructure"
-    condition: and(succeeded('terraformScanning'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    displayName: "Infrastructure Plan"
+    condition: succeeded('terraformScanning')
     jobs:
     #  Validate and Plan job
     - template: templates/terraform-validate-plan.yml
+      parameters:
+        workingDirectory: '$(working_dir_dev)'
+        backendServiceArm: '$(svc_name)'            
+        backendRgName: '$(rg_name)'
+        backendStorageAccount: '$(stg_name)'
+        backendContainerName: '$(blobcontainer_name)'
+        backendKey: '$(tfstate_Key)'
 
 
-# # ---------------------------
-# # 4. Apply
-# # ---------------------------
-  - stage: terraformApply
+# # 4. Approval
+  - stage: manualApproval
     dependsOn: terraformValidatePlan
-    displayName: "Creating Infrastructure"
+    displayName: "Manual Approval"
     # condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
     condition: and(succeeded('terraformValidatePlan'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
     #  Approval job
     - template: templates/terraform-approval.yml
+
+
+# # 5. Apply
+  - stage: terraformApply
+    dependsOn: manualApproval
+    displayName: "Creating Infrastructure"
+    # condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+    condition: and(succeeded('manualApproval'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
     #  Apply job
     - template: templates/terraform-apply.yml
+      parameters:
+        workingDirectory: '$(working_dir_dev)'
+        backendServiceArm: '$(svc_name)'            
+        backendRgName: '$(rg_name)'
+        backendStorageAccount: '$(stg_name)'
+        backendContainerName: '$(blobcontainer_name)'
+        backendKey: '$(tfstate_Key)'
 
 
-# # ---------------------------
-# # 5. Destroy
-# # ---------------------------
-  - stage: terraformDestroy
-    dependsOn: terraformApply
-    displayName: "Destroying Infrastructure"
-    condition: and(succeeded('terraformApply'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-    jobs:
+# # # ---------------------------
+# # # 5. Destroy
+# # # ---------------------------
+#   - stage: terraformDestroy
+#     dependsOn: terraformApply
+#     displayName: "Destroying Infrastructure"
+#     condition: and(succeeded('terraformApply'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+#     jobs:
 
-    # Approval job
-    - template: templates/terraform-approval.yml
-    # Destroy job
-    - template: templates/terraform-destroy.yml
+#     # Approval job
+#     - template: templates/terraform-approval.yml
+#     # Destroy job
+#     - template: templates/terraform-destroy.yml
 

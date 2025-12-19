@@ -1,3 +1,36 @@
+    # jobs:
+    # - job: terraformInstall
+    #   displayName: "Terraform Install and Init"
+    #   steps:
+    #     - task: TerraformInstaller@1
+    #       inputs:
+    #         terraformVersion: 'latest'
+    #     - task: TerraformTask@5
+    #       displayName: "Terraform Init"
+    #       inputs:
+    #         provider: 'azurerm'
+    #         command: 'init'
+    #         workingDirectory: '$(working_dir_dev)'
+    #         backendServiceArm: 'azure_ado_sp'
+    #         backendAzureRmOverrideSubscriptionID: '$(sub_id)'
+    #         backendAzureRmResourceGroupName: '$(rg_name)'
+    #         backendAzureRmStorageAccountName: '$(stg_name)'
+    #         backendAzureRmContainerName: '$(blobcontainer_name)'
+    #         backendAzureRmKey: '$(tfstate_Key)'
+
+    #     - task: TerraformTask@5
+    #       displayName: "Terraform fmt"
+    #       inputs:
+    #         provider: 'azurerm'
+    #         command: 'custom'
+    #         workingDirectory: '$(working_dir_dev)'
+    #         commandOptions: 'fmt'
+    #         outputTo: 'console'
+    #         environmentServiceNameAzureRM: 'azure_ado_sp'
+
+
+
+
 parameters:
   - name: workingDirectory          
     type: string
@@ -14,9 +47,15 @@ parameters:
   - name: backendContainerName      
     type: string
 
+  # - name: SubscriptionID
+  #   type: string
+
   - name: backendKey                
     type: string
 
+  # - name: terraformVersion          
+  #   type: string
+  #   default: '1.14.2'
 
 jobs:
 - job: terraformInstall
@@ -33,6 +72,7 @@ jobs:
         command: 'init'
         workingDirectory: ${{ parameters.workingDirectory }}
         backendServiceArm: ${{ parameters.backendServiceArm }}
+        #backendAzureRmOverrideSubscriptionID: ${{ parameters.SubscriptionID }}
         backendAzureRmResourceGroupName: ${{ parameters.backendRgName }}
         backendAzureRmStorageAccountName: ${{ parameters.backendStorageAccount }}
         backendAzureRmContainerName: ${{ parameters.backendContainerName }}
@@ -47,3 +87,4 @@ jobs:
         workingDirectory: ${{ parameters.workingDirectory }}
         customCommand: 'fmt'
         environmentServiceNameAzureRM: ${{ parameters.backendServiceArm }}
+

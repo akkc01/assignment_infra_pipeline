@@ -7,20 +7,21 @@ jobs:
     - task: TerraformTask@5
       displayName: "Terraform Init"
       inputs:
-        provider: azurerm
-        command: init
-        workingDirectory: $(tf_working_dir)
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: $(working_dir_dev)
         backendServiceArm: $(sc_name)
-        backendAzureRmResourceGroupName: $(tf_rg)
-        backendAzureRmStorageAccountName: $(tf_storage)
-        backendAzureRmContainerName: $(tf_container)
-        backendAzureRmKey: $(tfstateKey)
+        backendAzureRmResourceGroupName: $(rg_name)
+        backendAzureRmStorageAccountName: $(stg_name)
+        backendAzureRmContainerName: $(blobcontainer_name)
+        backendAzureRmKey: $(tfstate_Key)
+
 
     - task: TerraformTask@5
       displayName: Destroy
       inputs:
         provider: azurerm
         command: destroy
-        workingDirectory: $(tf_working_dir)
+        workingDirectory: $(working_dir_dev)
         commandOptions: '-auto-approve'
         environmentServiceNameAzureRM: $(sc_name)

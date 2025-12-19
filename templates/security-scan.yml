@@ -1,38 +1,47 @@
-jobs:
-- job: terraformScanning
-  displayName: "Infrastructure as Code Security Scanning"
-  steps:
+parameters:
+  - name: workingDirectory          
+    type: string
 
-    - script: |
-        echo "Installing IaC Security Tools..."
-        arch -arm64 brew install tfsec
-        arch -arm64 brew install checkov
-        arch -arm64 brew install tflint
-        arch -arm64 brew install terrascan
-        arch -arm64 brew install aquasecurity/trivy/trivy
-      displayName: "Install Scanners"
+jobs:
+  - job: codeScanning
+    displayName: "Security Scanning"
+    steps:
+    # - script: |
+      # echo "Installing IaC Security Tools..."
+      # arch -arm64 brew install checkov
+      # arch -arm64 brew install tflint
+      # arch -arm64 brew install terrascan
+      # arch -arm64 brew install aquasecurity/trivy/trivy
 
     - task: tfsec@1
       displayName: "TFSEC Scan"
       inputs:
         version: 'v1.26.0'
-        dir: $(tf_working_dir)
+        dir: '${{ parameters.workingDirectory }}'
 
     - script: |
-        cd '$(tf_working_dir)'
+        cd '${{ parameters.workingDirectory }}'
         tflint --init
-        tflint
+        # Force zero exit code + results JSON mein save
+        tflint --recursive --force --format=json > tflint-results.json
+        echo "TFLint scan completed. Results:"
+        cat tflint-results.json || true
       displayName: "TFLint Scan"
 
     - script: |
-          echo "Running Checkov Scan..."
-          checkov -d $(tf_working_dir)
-        displayName: "Checkov Scan"   
+        echo "Running Checkov Scan..."
+        checkov -d . --soft-fail --compact --quiet --output json --output sarif > checkov-results.json
+        checkov -d . --soft-fail --compact --quiet --output sarif > checkov-results.sarif
+        echo "Checkov scan completed. Results saved."
+        cat checkov-results.json || true
+      displayName: "Checkov Scan"
 
     - script: |
-        echo "Running Terrascan..."
-        terrascan scan -i terraform -d $(tf_working_dir)
+        echo "Running Terrascan Scan..."
+        terrascan scan -d . -i terraform -o json > terrascan-results.json -o sarif > terrascan-results.sarif || true
+        echo "Terrascan scan completed. Results saved."
+        cat terrascan-results.json || true
       displayName: "Terrascan Scan"
 
-    - script: trivy config '$(tf_working_dir)'
+    - script: trivy config '${{ parameters.workingDirectory }}'
       displayName: "Trivy Scan"

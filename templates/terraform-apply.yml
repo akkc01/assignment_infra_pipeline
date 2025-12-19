@@ -1,26 +1,45 @@
+parameters:
+  - name: workingDirectory          
+    type: string
+
+  - name: backendServiceArm         
+    type: string
+
+  - name: backendRgName             
+    type: string
+
+  - name: backendStorageAccount     
+    type: string
+
+  - name: backendContainerName      
+    type: string
+
+  - name: backendKey                
+    type: string
+
+
 jobs:
-- job: applyJob
-  dependsOn: approvalJob
-  condition: and(succeeded('approvalJob'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+- job: terraformApply
   displayName: "Terraform Apply"
   steps:
     - task: TerraformTask@5
       displayName: "Terraform Init"
       inputs:
-        provider: azurerm
-        command: init
-        workingDirectory: $(tf_working_dir)
-        backendServiceArm: $(sc_name)
-        backendAzureRmResourceGroupName: $(tf_rg)
-        backendAzureRmStorageAccountName: $(tf_storage)
-        backendAzureRmContainerName: $(tf_container)
-        backendAzureRmKey: $(tfstateKey)
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: ${{ parameters.workingDirectory }}
+        backendServiceArm: ${{ parameters.backendServiceArm }}
+        backendAzureRmResourceGroupName: ${{ parameters.backendRgName }}
+        backendAzureRmStorageAccountName: ${{ parameters.backendStorageAccount }}
+        backendAzureRmContainerName: ${{ parameters.backendContainerName }}
+        backendAzureRmKey: ${{ parameters.backendKey }}
+
 
     - task: TerraformTask@5
       displayName: Apply
       inputs:
         provider: azurerm
         command: apply
-        workingDirectory: $(tf_working_dir)
+        workingDirectory: ${{ parameters.workingDirectory }}
         commandOptions: '-auto-approve'
-        environmentServiceNameAzureRM: $(sc_name)
+        environmentServiceNameAzureRM: ${{ parameters.backendServiceArm }}
