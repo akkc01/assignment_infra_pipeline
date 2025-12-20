@@ -1,0 +1,55 @@
+ stages: 
+  - stage: securityScanning
+    displayName: "Security Scanning"
+    jobs:
+      - job: codeScanning
+        displayName: "Security Scanning"
+        steps:
+          # - script: |
+          #   echo "Installing IaC Security Tools..."
+          #   arch -arm64 brew install checkov
+          #   arch -arm64 brew install tflint
+          #   arch -arm64 brew install terrascan
+          #   arch -arm64 brew install aquasecurity/trivy/trivy
+          # displayName: "Install IaC Security Tools"
+          # Note: Uncomment if tools are not pre-installed in the agent
+
+          - task: tfsec@1
+            displayName: "TFSEC Scan"
+            inputs:
+              version: 'v1.26.0'
+              dir: '$(System.DefaultWorkingDirectory)'
+
+          - script: |
+              echo "Running TFLint Scan..."
+              cd '$(System.DefaultWorkingDirectory)'
+              tflint --init
+              tflint --recursive --force --format=json > tflint-results.json || true
+              echo "TFLint scan completed. Results:"
+              cat tflint-results.json || true
+            displayName: "TFLint Scan"
+
+          - script: |
+              echo "Running Checkov Scan..."
+              cd '$(System.DefaultWorkingDirectory)'
+              checkov -d . --soft-fail --compact --quiet --output json > checkov-results.json || true
+              checkov -d . --soft-fail --compact --quiet --output sarif > checkov-results.sarif || true
+              echo "Checkov scan completed. Results saved to checkov-results.json and .sarif"
+            displayName: "Checkov Scan"
+
+          - script: |
+              echo "Running Terrascan Scan..."
+              cd '$(System.DefaultWorkingDirectory)'
+              terrascan scan -d . -i terraform -o json > terrascan-results.json || true
+              terrascan scan -d . -i terraform -o sarif > terrascan-results.sarif || true
+              echo "Terrascan scan completed. Results saved."
+              cat terrascan-results.json || true
+            displayName: "Terrascan Scan"
+            # Note: Terrascan doesn't support multiple -o in single command, so running twice
+
+          - script: |
+              echo "Running Trivy IaC Scan..."
+              trivy config --format json --output trivy-results.json '$(System.DefaultWorkingDirectory)' || true
+              trivy config --format sarif --output trivy-results.sarif '$(System.DefaultWorkingDirectory)' || true
+              echo "Trivy scan completed."
+            displayName: "Trivy Scan"

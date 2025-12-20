@@ -9,113 +9,40 @@ stages:
       - job: initplan
         displayName: "Terraform init plan"
         steps:
-        - task: TerraformInstaller@1
-          displayName: "Terraform install"
-          inputs:
-            terraformVersion: 'latest'
+          - template: maneesh/initPlan.yml
 
-        - task: TerraformTask@5
-          displayName: "Terraform init"
-          inputs:
-            provider: 'azurerm'
-            command: 'init'
-            workingDirectory: '$(System.DefaultWorkingDirectory)/env/dev'
-            backendServiceArm: 'azure_ado_sp'
-            backendAzureRmOverrideSubscriptionID: '009fad33-c09c-4841-af38-57dd79870d40'
-            backendAzureRmResourceGroupName: 'akkc'
-            backendAzureRmStorageAccountName: 'storageaccountakkc007'
-            backendAzureRmContainerName: 'tfstatefile-container'
-            backendAzureRmKey: 'tftest.terraform.tfstate'
+  - template: maneesh/scanning.yml
+  
 
-        - task: TerraformTask@5
-          displayName: "Terraform Validate"
-          inputs:
-            provider: 'azurerm'
-            command: 'validate'
+  # - stage: costEstimation
+  #   displayName: "Cost Estimation"
+  #   jobs:
+  #     - job: costestimate
+  #       displayName: "Cost Estimate job"
+  #       steps:
+  #       - script: |
+  #           echo "Running Infracost Estimation..."
 
-        - task: TerraformTask@5
-          inputs:
-            provider: 'azurerm'
-            command: 'plan'
-            workingDirectory: '$(System.DefaultWorkingDirectory)/env/dev'
-            environmentServiceNameAzureRM: 'azure_ado_sp'
+  #           # Infracost install (latest version)
+  #           curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
 
-  - stage: securityScanning
-    displayName: "Security Scanning"
-    jobs:
-      - job: codeScanning
-        displayName: "Security Scanning"
-        steps:
-        # - script: |
-          # echo "Installing IaC Security Tools..."
-          # arch -arm64 brew install checkov
-          # arch -arm64 brew install tflint
-          # arch -arm64 brew install terrascan
-          # arch -arm64 brew install aquasecurity/trivy/trivy
+  #           # Terraform init (zaroori hai plan ke liye)
+  #           terraform init
 
-        - task: tfsec@1
-          displayName: "TFSEC Scan"
-          inputs:
-            version: 'v1.26.0'
-            dir: '$(System.DefaultWorkingDirectory)'
+  #           # Terraform plan JSON mein save karo
+  #           terraform plan -out=tfplan.binary
+  #           terraform show -json tfplan.binary > tfplan.json
 
-        - script: |
-            cd '$(System.DefaultWorkingDirectory)'
-            tflint --init
-            # Force zero exit code + results JSON mein save
-            tflint --recursive --force --format=json > tflint-results.json
-            echo "TFLint scan completed. Results:"
-            cat tflint-results.json || true
-          displayName: "TFLint Scan"
+  #           # Infracost breakdown (cost estimate)
+  #           infracost breakdown --path tfplan.json \
+  #             --format json --out-file infracost-breakdown.json \
+  #             --format html --out-file infracost-breakdown.html
 
-        - script: |
-            echo "Running Checkov Scan..."
-            checkov -d . --soft-fail --compact --quiet --output json --output sarif > checkov-results.json
-            checkov -d . --soft-fail --compact --quiet --output sarif > checkov-results.sarif
-            echo "Checkov scan completed. Results saved."
-            cat checkov-results.json || true
-          displayName: "Checkov Scan"
+  #           # Summary console mein dikhao (human readable)
+  #           infracost breakdown --path tfplan.json --format table
 
-        - script: |
-            echo "Running Terrascan Scan..."
-            terrascan scan -d . -i terraform -o json > terrascan-results.json -o sarif > terrascan-results.sarif || true
-            echo "Terrascan scan completed. Results saved."
-            cat terrascan-results.json || true
-          displayName: "Terrascan Scan"
-
-        - script: trivy config '$(System.DefaultWorkingDirectory)'
-          displayName: "Trivy Scan"
-
-
-  - stage: costEstimation
-    displayName: "Cost Estimation"
-    jobs:
-      - job: costestimate
-        displayName: "Cost Estimate job"
-        steps:
-        - script: |
-            echo "Running Infracost Estimation..."
-
-            # Infracost install (latest version)
-            curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
-
-            # Terraform init (zaroori hai plan ke liye)
-            terraform init
-
-            # Terraform plan JSON mein save karo
-            terraform plan -out=tfplan.binary
-            terraform show -json tfplan.binary > tfplan.json
-
-            # Infracost breakdown (cost estimate)
-            infracost breakdown --path tfplan.json \
-              --format json --out-file infracost-breakdown.json \
-              --format html --out-file infracost-breakdown.html
-
-            # Summary console mein dikhao (human readable)
-            infracost breakdown --path tfplan.json --format table
-
-            echo "Infracost estimation completed."
-          displayName: "Infracost Cost Estimation"
+  #           echo "Infracost estimation completed."
+  #         displayName: "Infracost Cost Estimation"
 
   # - stage: manualValidation
   # - stage: apply

@@ -1,0 +1,34 @@
+steps:
+
+  - task: TerraformInstaller@1
+    displayName: "Terraform install"
+    inputs:
+      terraformVersion: 'latest'
+
+  - task: TerraformTask@5
+    displayName: "Terraform init"
+    inputs:
+      provider: 'azurerm'
+      command: 'init'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/env/dev'
+      backendServiceArm: 'azure_ado_sp'
+      backendAzureRmSubscriptionId: '009fad33-c09c-4841-af38-57dd79870d40'  # Note: Corrected parameter name
+      backendAzureRmResourceGroupName: 'akkc'
+      backendAzureRmStorageAccountName: 'storageaccountakkc007'
+      backendAzureRmContainerName: 'tfstatefile-container'
+      backendAzureRmKey: 'tftest.terraform.tfstate'
+
+  - task: TerraformTask@5
+    displayName: "Terraform Validate"
+    inputs:
+      provider: 'azurerm'
+      command: 'validate'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/env/dev'  # Recommended to add for consistency
+
+  - task: TerraformTask@5
+    displayName: "Terraform Plan"
+    inputs:
+      provider: 'azurerm'
+      command: 'plan'
+      workingDirectory: '$(System.DefaultWorkingDirectory)/env/dev'
+      environmentServiceNameAzureRM: 'azure_ado_sp'
